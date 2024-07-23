@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gdtcs.batch.dataCollectors.mapper.DataCollectorMapper">
+    <resultMap id="selectVehicleByNumberListMap" type="VehicleVo">
+        <result column="CAR_NO" property="carNo" />
+        <result column="EXEMPT_STATUS" property="exemptStatus" />
+        <result column="BASE_DATE" property="baseDate" />
+    </resultMap>
+
+    <!-- API 호출 대상 목록 가져오기 -->
+    <select id="selectVehicleList" parameterType="String" resultMap="selectVehicleByNumberListMap">
+        SELECT
+                    tv.CAR_NO
+                ,   tv.EXEMPT_STATUS
+                ,   tv.BASE_DATE
+        FROM TBL_VEHICLE tv
+        WHERE 1=1
+        AND tv.PROG_FLAG  = #{progFlag}
+        AND tv.EXEMPT_STATUS = #{exemptStatus}
+        AND tv.vehicle_type = #{vehicleType}
+        GROUP BY
+                    tv.CAR_NO
+                ,   tv.EXEMPT_STATUS
+                ,   tv.BASE_DATE
+    </select>
+
+    <!-- API 호출 후에 상태 업데이트 -->
+    <update id="updateVehicle" parameterType="VehicleVo">
+        UPDATE
+            TBL_VEHICLE tv
+        SET
+            tv.EXEMPT_STATUS = CASE
+                -- 우선순위에 따라 EXEMPT_STATUS 업데이트
+                WHEN #{exemptStatus} = '03' THEN '03' -- 다자녀가 가장 높은 우선순위
+                WHEN #{exemptStatus} = '04' AND tv.EXEMPT_STATUS NOT IN ('03') THEN '04' -- 유공자
+                WHEN #{exemptStatus} = '05' AND tv.EXEMPT_STATUS NOT IN ('03', '04') THEN '05' -- 장애인
+                WHEN #{exemptStatus} = '06' AND tv.EXEMPT_STATUS NOT IN ('03', '04', '05') THEN '06' -- 전기
+                WHEN #{exemptStatus} = '07' AND tv.EXEMPT_STATUS NOT IN ('03', '04', '05', '06') THEN '07' -- 수소
+                ELSE tv.EXEMPT_STATUS -- 현재 상태 유지
+            END,
+            tv.PROG_FLAG = #{progFlag}, -- 프로그래스 플래그 업데이트
+            tv.MOD_ID = #{modId}, -- 수정자 ID 업데이트
+            tv.MOD_DT = TO_DATE(#{modDt}, 'YYYY-MM-DD HH24:MI:SS') -- 수정 날짜 업데이트
+        WHERE
+            tv.CAR_NO = #{carNo} -- 차량 번호가 일치하는 레코드를 업데이트
+    </update>
+
+    <!-- API 호출 후에 면제일 경우 데이터 적재 -->
+    <update id="insertVehicleMaster" parameterType="VehicleMasterVo">
+    MERGE INTO TBL_VEHICLE_MST tvm
+       USING (
+           SELECT
+               #{carNo} AS CAR_NO, -- 차량 번호
+               #{baseDate} AS BASE_DATE, -- 기준 날짜
+               CASE
+                   -- 전달된 exemptStatus가 유효한 값인지 확인하고, 우선순위에 따라 설정
+                   WHEN #{exemptStatus} = '03' THEN '03'
+                   WHEN #{exemptStatus} = '04' THEN '04'
+                   WHEN #{exemptStatus} = '05' THEN '05'
+                   WHEN #{exemptStatus} = '06' THEN '06'
+                   WHEN #{exemptStatus} = '07' THEN '07'
+                   ELSE #{exemptStatus} -- 만약 유효한 값이 아니라면 그대로 사용
+               END AS EXEMPT_STATUS,
+               #{vehicleKind} AS VEHICLE_KIND, -- 차량 종류
+               #{syncStatus} AS SYNC_STATUS, -- 동기화 상태
+               #{regId} AS REG_ID, -- 등록자 ID
+               TO_DATE(#{regDt}, 'YYYY-MM-DD HH24:MI:SS') AS REG_DT, -- 등록 날짜
+               #{modId} AS MOD_ID, -- 수정자 ID
+               TO_DATE(#{modDt}, 'YYYY-MM-DD HH24:MI:SS') AS MOD_DT -- 수정 날짜
+           FROM dual
+       ) src
+       ON (tvm.CAR_NO = src.CAR_NO) -- 대상 테이블과 소스 데이터의 CAR_NO 일치 조건
+       WHEN MATCHED THEN
+           UPDATE SET
+               tvm.EXEMPT_STATUS = CASE
+                   -- 우선순위에 따라 EXEMPT_STATUS 업데이트
+                   WHEN src.EXEMPT_STATUS = '03' THEN '03' -- 다자녀가 가장 높은 우선순위
+                   WHEN src.EXEMPT_STATUS = '04' AND tvm.EXEMPT_STATUS NOT IN ('03') THEN '04' -- 유공자
+                   WHEN src.EXEMPT_STATUS = '05' AND tvm.EXEMPT_STATUS NOT IN ('03', '04') THEN '05' -- 장애인
+                   WHEN src.EXEMPT_STATUS = '06' AND tvm.EXEMPT_STATUS NOT IN ('03', '04', '05') THEN '06' -- 전기
+                   WHEN src.EXEMPT_STATUS = '07' AND tvm.EXEMPT_STATUS NOT IN ('03', '04', '05', '06') THEN '07' -- 수소
+                   ELSE tvm.EXEMPT_STATUS -- 현재 상태 유지
+               END,
+               tvm.BASE_DATE = src.BASE_DATE,
+               tvm.MOD_ID = src.MOD_ID,
+               tvm.MOD_DT = src.MOD_DT
+       WHEN NOT MATCHED THEN
+           INSERT (
+               CAR_NO,
+               BASE_DATE,
+               EXEMPT_STATUS,
+               VEHICLE_KIND,
+               SYNC_STATUS,
+               REG_ID,
+               REG_DT,
+               MOD_ID,
+               MOD_DT
+           ) VALUES (
+               src.CAR_NO,
+               src.BASE_DATE,
+               src.EXEMPT_STATUS,
+               src.VEHICLE_KIND,
+               src.SYNC_STATUS,
+               src.REG_ID,
+               src.REG_DT,
+               src.MOD_ID,
+               src.MOD_DT
+           )
+    </update>
+
+    <!-- 차량 면제정보 -->
+    <select id="selectVehicleMaster" resultType="vehicleMasterVo" parameterType="vehicleMasterVo">
+        SELECT
+                    tvm.CAR_NO AS carNo
+                ,   tvm.EXEMPT_STATUS AS exemptStatus
+        FROM TBL_VEHICLE_MST tvm
+        WHERE 1=1
+        AND tvm.CAR_NO = #{carNo}
+    </select>
+
+    <!-- 차량 면제정보 업데이트 대상(전체) -->
+    <select id="selectAllSyncVehicleMaster" resultType="vehicleMasterVo" parameterType="vehicleMasterVo">
+        SELECT
+            tvm.CAR_NO AS carNo
+        FROM TBL_VEHICLE_MST tvm
+        WHERE 1=1
+        AND tvm.BASE_DATE <![CDATA[ < ]]> #{baseDate}
+        AND tvm.SYNC_STATUS = #{syncStatus}
+    </select>
+</mapper>

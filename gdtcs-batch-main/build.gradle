@@ -1,0 +1,89 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.5'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'com.gdtcs'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = '17'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+    flatDir {
+            dirs 'lib'
+        }
+}
+
+// jar 파일 생성시, 불필요한 파일 제외
+jar {
+    exclude('src/main/resources/gpki_certs/**', 'src/main/resources/script/sql/**')
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-quartz'
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+    implementation group: 'jakarta.annotation', name: 'jakarta.annotation-api', version: '3.0.0'
+    // HikariCP 의존성 추가
+    implementation 'com.zaxxer:HikariCP:5.0.1'
+    // jdbc log 설정 추가
+    implementation 'org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:1.16'
+
+    // logback 추가
+    implementation 'ch.qos.logback:logback-classic:1.4.4'
+
+    // @Schema 이노테이션을 사용하기 위해 추가
+    implementation 'io.swagger.core.v3:swagger-annotations:2.2.21'
+    // apache commons 추가
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    // collection util 사용으로 추가
+    implementation 'org.apache.commons:commons-collections4:4.0'
+
+    // apache commons codec 추가
+    implementation 'commons-codec:commons-codec:1.17.0'
+
+    // apache commons 추가
+    implementation 'org.apache.commons:commons-collections4:4.4'
+
+    // apache httpclient 추가
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.3.1'
+
+    // oracle jdbc 추가
+    implementation name: 'ojdbc8'
+
+    // JAXB API
+    implementation 'jakarta.xml.bind:jakarta.xml.bind-api:2.3.3'
+
+    // JAXB Implementation
+    implementation 'org.glassfish.jaxb:jaxb-runtime:2.3.3'
+
+    // Apache Commons IO
+    implementation 'commons-io:commons-io:2.11.0'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.3'
+    testImplementation 'org.springframework.batch:spring-batch-test'
+    testImplementation 'ch.qos.logback:logback-classic:1.4.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+  // Local JAR dependencies 추가
+    implementation files("${projectDir}/lib/libgpkiapi_jni_1.5.jar")
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

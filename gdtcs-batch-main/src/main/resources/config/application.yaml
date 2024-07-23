@@ -1,0 +1,31 @@
+spring:
+  profiles:
+    active: dev
+  batch:
+    job:
+      names: ${job.name:NONE}
+      enabled: false # spring batch 자동실행 방지
+    jdbc:
+      initialize-schema: never
+  datasource:
+    username: gdtcs
+    password: gdtcs1234
+    driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 30000
+      pool-name: HikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      leak-detection-threshold: 40000
+      jdbc-url: jdbc:log4jdbc:oracle:thin:@127.0.0.1:1521:XE
+      validation-timeout: 5000 # 연결 유효성 검사 타임아웃 추가 설정
+      connection-test-query: SELECT 1 FROM DUAL
+
+mybatis:
+  check-config-location: on
+
+# logback 환경설정 파일 경로 설정
+logging:
+  config: classpath:config/logback-spring.xml

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gdtcs.batch.dataCollectors.mapper.CodeMapper">
+    <resultMap id="selectCodeListResultMap" type="CodeVo">
+        <result column="MAIN_CODE" property="mainCode" />
+        <result column="SUB_CODE" property="subCode" />
+        <result column="CODE_NAME" property="codeName"/>
+        <result column="REG_ID" property="author"/>
+        <result column="REG_DT" property="regDate"/>
+        <result column="MODI_DT" property="modiDate"/>
+    </resultMap>
+    <select id="selectCodeList" resultMap="selectCodeListResultMap">
+        SELECT
+                    tc.MAIN_CODE
+                ,   tc.SUB_CODE
+                ,   tc.CODE_NAME
+                ,   tc.REG_ID
+                ,   TO_CHAR(tc.REG_DT, 'YYYY-MM-DD HH24:MI:SS') AS REG_DT
+                ,   TO_CHAR(tc.MODI_DT ,'YYYY-MM-DD HH24:MI:SS') AS MODI_DT
+        FROM TBL_VEHICLE_CODE tc
+    </select>
+</mapper>
